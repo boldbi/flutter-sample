@@ -13,7 +13,7 @@ This section guides you in using the Bold BI dashboard in your Flutter sample ap
 
 The samples require the following to run:
 
-* [Flutter SDK] (<https://docs.flutter.dev/get-started/install/windows>)
+* [Flutter SDK](https://docs.flutter.dev/get-started/install/windows)
 * [Visual Studio Code](https://code.visualstudio.com/download)
 
 ## Using the Flutter sample
