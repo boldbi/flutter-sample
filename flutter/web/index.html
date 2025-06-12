@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="sampleproject">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>sampleproject</title>
+  <link rel="manifest" href="manifest.json">
+
+  <script>
+    var serviceWorkerVersion = null;
+  </script>
+
+  <script type="text/javascript" src="https://cdn.boldbi.com/embedded-sdk/latest/boldbi-embed.js"></script>
+</head>
+<body onload="Init()">
+
+<div id="viewer-section">
+  <div id="dashboard"></div>
+</div>
+
+<script>
+  var apiUrl = 'http://localhost:8080/api';
+  var ServerUrl;
+  var SiteIdentifier;
+  var Environment;
+  var UserEmail;
+  var EmbedSecret;
+  var DashboardId;
+
+  async function Init() {
+    try {
+      // Fetch config from your backend endpoint (change URL if needed)
+      const res = await fetch(apiUrl+'/getdetails');
+      if (!res.ok) throw new Error('Failed to load config from backend');
+      const config = await res.json();
+
+      // Assign values from backend response
+      ServerUrl = config.ServerUrl;
+      SiteIdentifier = config.SiteIdentifier;
+      Environment = config.Environment;
+      DashboardId = config.DashboardId;
+
+      renderDashboard(DashboardId);
+
+    } catch (err) {
+      console.error('Error initializing embed:', err);
+    }
+  }
+
+  function renderDashboard(dashboardId) {
+    var dashboard = BoldBI.create({
+        serverUrl: ServerUrl + "/" + SiteIdentifier,
+        dashboardId: dashboardId,
+        embedContainerId: "dashboard",
+        embedType: BoldBI.EmbedType.Component,
+        mode: BoldBI.Mode.View,
+        expirationTime: 100000,
+        authorizationServer: {
+          url: apiUrl+"/authorizationserver"
+        }
+    });
+    dashboard.loadDashboard();
+  }
+</script>
+</body>
+</html>
