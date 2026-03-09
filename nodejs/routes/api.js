@@ -1,12 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
-const url = require('url');
-const http = require('http');
-const https = require('https');
 const path = require('path');
+const axios = require('axios');
 
-const { getSignatureUrl } = require('../utils/signature');
 
 // Load config once
 let appconfig;
@@ -17,30 +14,44 @@ try {
   process.exit(1);
 }
 
-const embedSecret = appconfig.EmbedSecret;
-const userEmail = appconfig.UserEmail;
 
-// POST /api/authorizationserver
-router.post('/authorizationserver', async (req, res) => {
-  let embedQuerString = req.body.embedQuerString;
-  const dashboardServerApiUrl = req.body.dashboardServerApiUrl;
 
-  embedQuerString += "&embed_user_email=" + userEmail;
-  embedQuerString += "&embed_server_timestamp=" + Math.round(Date.now() / 1000);
-  const embedSignature = "&embed_signature=" + getSignatureUrl(embedQuerString, embedSecret);
-  const embedDetailsUrl = "/embed/authorize?" + embedQuerString + embedSignature;
+// POST /api/TokenGeneration
+router.post('/TokenGeneration', async (req, res) => {
+  try {
+    console.log('Received TokenGeneration request');
+    console.log(appconfig)
 
-  const serverProtocol = url.parse(dashboardServerApiUrl).protocol === 'https:' ? https : http;
+    if (!appconfig.ServerUrl || !appconfig.EmbedSecret) {
+      return res.status(400).json({ error: 'Missing required fields: serverurl, embedsecret, dashboard.id' });
+    }
 
-  serverProtocol.get(dashboardServerApiUrl + embedDetailsUrl, function(response) {
-    let str = '';
-    response.on('data', function(chunk) {
-      str += chunk;
+    const targetUrl = (appconfig.SiteIdentifier && appconfig.SiteIdentifier.toString().trim() !== '')
+      ? `${appconfig.ServerUrl.replace(/\/$/, '')}/api/${appconfig.SiteIdentifier}/embed/authorize`
+      : `${appconfig.ServerUrl.replace(/\/$/, '')}/api/embed/authorize`;
+
+    const payload = {
+      email: appconfig.UserEmail,
+      serverurl: appconfig.ServerUrl,
+      siteidentifier: appconfig.SiteIdentifier,
+      embedsecret: appconfig.EmbedSecret,
+      dashboard: { id: appconfig.DashboardId }
+    };
+
+    const response = await axios.post(targetUrl, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000
     });
-    response.on('end', function() {
-      res.send(str);
-    });
-  });
+
+
+    // Return the Bold BI response directly (contains Data.access_token)
+    return res.status(response.status).json(response.data.Data.access_token);
+  } catch (err) {
+    console.error('TokenGeneration error:', err && err.message ? err.message : err);
+    const status = (err.response && err.response.status) ? err.response.status : 500;
+    const data = (err.response && err.response.data) ? err.response.data : { error: err.message };
+    return res.status(status).json(data);
+  }
 });
 
 // GET /api/getdetails
