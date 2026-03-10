@@ -34,8 +34,6 @@
   var ServerUrl;
   var SiteIdentifier;
   var Environment;
-  var UserEmail;
-  var EmbedSecret;
   var DashboardId;
 
   async function Init() {
@@ -51,24 +49,31 @@
       Environment = config.Environment;
       DashboardId = config.DashboardId;
 
-      renderDashboard(DashboardId);
+      // Request embed token from backend TokenGeneration endpoint
+      const tokenRes = await fetch(apiUrl + '/TokenGeneration', { method: 'POST' });
+
+      if (!tokenRes.ok) throw new Error('Failed to generate embed token');
+      const access_token = await tokenRes.json();
+      const embedToken = access_token;
+      if (!embedToken) throw new Error('Embed token not found in TokenGeneration response');
+
+      renderDashboard(DashboardId, embedToken);
 
     } catch (err) {
       console.error('Error initializing embed:', err);
     }
   }
 
-  function renderDashboard(dashboardId) {
+  function renderDashboard(dashboardId, embedToken) {
+    var server = ServerUrl;
+    if (SiteIdentifier && SiteIdentifier.toString().trim() !== '') server = server.replace(/\/$/, '') + '/' + SiteIdentifier;
+
     var dashboard = BoldBI.create({
-        serverUrl: ServerUrl + "/" + SiteIdentifier,
+        serverUrl: server,
         dashboardId: dashboardId,
+        environment: Environment,
         embedContainerId: "dashboard",
-        embedType: BoldBI.EmbedType.Component,
-        mode: BoldBI.Mode.View,
-        expirationTime: 100000,
-        authorizationServer: {
-          url: apiUrl+"/authorizationserver"
-        }
+        embedToken: embedToken
     });
     dashboard.loadDashboard();
   }
